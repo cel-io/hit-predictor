@@ -1,22 +1,18 @@
 <template>
   <div class="box has-text-centered">
-    <b-tooltip
-      :label="getFeatureDescription(feature)"
-      type="is-primary is-light"
-      multilined
-      size="is-large"
-    >
-      <p class="is-size-4">{{ name }}</p></b-tooltip
-    >
+    <feature-title :feature="feature" :name="name" />
     <p class="is-size-5">
       {{ value }}
     </p>
   </div>
 </template>
 <script>
-import { getFeatureDescription } from "../helpers";
+import FeatureTitle from "./FeatureTitle.vue";
 
 export default {
+  components: {
+    FeatureTitle,
+  },
   props: {
     feature: {
       type: String,
@@ -29,9 +25,6 @@ export default {
     value: {
       require: true,
     },
-  },
-  methods: {
-    getFeatureDescription,
   },
 };
 </script>

@@ -21,6 +21,42 @@ SELECTED_COLS = ['danceability', 'loudness', 'instrumentalness', 'danceability_e
                  'mode_instrumentalness', 'speechiness_instrumentalness', 'instrumentalness_liveness', 'instrumentalness_valence', 'instrumentalness_tempo', 'instrumentalness_duration_ms', 'instrumentalness_time_signature', 'instrumentalness_chorus_hit', 'instrumentalness_sections']
 
 
+def predict_hit(features):
+    features_to_transform = {
+        "danceability": [features['danceability']],
+        "energy": [features['energy']],
+        "key": [features['key']],
+        "loudness": [features['loudness']],
+        "mode": [features['mode']],
+        "speechiness": [features['speechiness']],
+        "acousticness": [features['acousticness']],
+        "instrumentalness": [features['instrumentalness']],
+        "liveness": [features['liveness']],
+        "valence": [features['valence']],
+        "tempo": [features['tempo']],
+        "duration_ms": [features['duration_ms']],
+        "time_signature": [features['time_signature']],
+        "chorus_hit": [features['chorus_hit']],
+        "sections": [features['sections']],
+    }
+
+    df = pd.DataFrame.from_dict(features_to_transform)
+
+    combos = list(combinations(list(df.columns), 2))
+    colnames = list(df.columns) + ['_'.join(x) for x in combos]
+
+    print(colnames)
+
+    global polynomial_features_model
+    df = polynomial_features_model.transform(df)
+    df = pd.DataFrame(df)
+    df.columns = colnames
+
+    global SELECTED_COLS
+
+    return True if predict_model.predict(df[SELECTED_COLS]) == 1 else False
+
+
 def auth_spotify():
     global auth_token
 
@@ -124,23 +160,13 @@ def hit_prediction(track_id):
     else:
         features["chorus_hit"] = responseAnalysisJSON["sections"][2]["start"] if num_sections >= 3 else responseAnalysisJSON["sections"][num_sections - 1]["start"]
 
-    features_to_transform = {}
-
-    for key in features:
-        features_to_transform[key] = [features[key]]
-
-    df = pd.DataFrame.from_dict(features_to_transform)
-
-    combos = list(combinations(list(df.columns), 2))
-    colnames = list(df.columns) + ['_'.join(x) for x in combos]
-
-    global polynomial_features_model
-    df = polynomial_features_model.transform(df)
-    df = pd.DataFrame(df)
-    df.columns = colnames
-
-    global SELECTED_COLS
-
-    hit = True if predict_model.predict(df[SELECTED_COLS]) == 1 else False
+    hit = predict_hit(features)
 
     return jsonify({"features": features, "hit": hit})
+
+
+@spotify.route('hit-prediction/manual', methods=['POST'])
+def hit_prediction_manual():
+    hit = predict_hit(request.get_json())
+
+    return jsonify({"hit": hit})

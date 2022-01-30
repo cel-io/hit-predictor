@@ -48,8 +48,6 @@ def build_playlist():
 
     norm_selected_features = normalize(selected_features)
 
-    print(norm_selected_features)
-
     neigh = NearestNeighbors(n_neighbors=5, radius=0.01)
     samples = normalized_tracks.to_numpy()
     neigh.fit(samples)

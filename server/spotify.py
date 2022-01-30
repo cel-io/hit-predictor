@@ -45,8 +45,6 @@ def predict_hit(features):
     combos = list(combinations(list(df.columns), 2))
     colnames = list(df.columns) + ['_'.join(x) for x in combos]
 
-    print(colnames)
-
     global polynomial_features_model
     df = polynomial_features_model.transform(df)
     df = pd.DataFrame(df)

@@ -545,6 +545,127 @@
           </div>
         </div>
       </section>
+      <hr />
+      <section>
+        <div class="columns">
+          <div class="column">
+            <h1 class="title">Playlist Builder</h1>
+            <p class="mb-3">Build a playlist based on this song/selection.</p>
+            <p class="is-size-3">Criteria:</p>
+          </div>
+        </div>
+        <div class="columns">
+          <div class="column">
+            <p class="is-size-5">Song Similarity</p>
+            <b-field label="Weight">
+              <b-slider
+                :custom-formatter="(val) => Math.round(val * 100).toString()"
+                size="is-medium"
+                :min="0"
+                :max="1"
+                :step="0.01"
+                v-model="criteria.songSimilarityWeight"
+              >
+                <b-slider-tick :value="0">Not Important</b-slider-tick>
+                <b-slider-tick :value="1">Important</b-slider-tick>
+              </b-slider>
+            </b-field>
+          </div>
+          <div class="column is-1" />
+          <div class="column">
+            <p class="is-size-5">Hit or Not</p>
+            <b-field label="Weight" class="mb-5">
+              <b-slider
+                class="mb-5"
+                :custom-formatter="(val) => Math.round(val * 100).toString()"
+                size="is-medium"
+                :min="0"
+                :max="1"
+                :step="0.01"
+                v-model="criteria.hitOrNotWeight"
+              >
+                <b-slider-tick :value="0">Not Important</b-slider-tick>
+                <b-slider-tick :value="1">Important</b-slider-tick>
+              </b-slider>
+            </b-field>
+            <br />
+            <b-field class="mt-5">
+              <b-select expanded v-model="criteria.hit">
+                <option :value="true">Prefer hits</option>
+                <option :value="false">Prefer not hits</option>
+              </b-select>
+            </b-field>
+          </div>
+          <div class="column is-1" />
+          <div class="column">
+            <p class="is-size-5">Main Feature</p>
+            <b-field label="Weight">
+              <b-slider
+                :custom-formatter="(val) => Math.round(val * 100).toString()"
+                size="is-medium"
+                :min="0"
+                :max="1"
+                :step="0.01"
+                v-model="criteria.mainFeatureWeight"
+              >
+                <b-slider-tick :value="0">Not Important</b-slider-tick>
+                <b-slider-tick :value="1">Important</b-slider-tick>
+              </b-slider>
+            </b-field>
+            <br />
+            <b-field grouped>
+              <b-field class="mt-5">
+                <b-select v-model="criteria.mainFeatureHigher">
+                  <option :value="true">More</option>
+                  <option :value="false">Less</option>
+                </b-select>
+              </b-field>
+              <b-field class="mt-5">
+                <b-select v-model="criteria.mainFeature">
+                  <option :value="'danceability'">Danceability</option>
+                  <option :value="'energy'">Energy</option>
+                  <option :value="'loudness'">Loudness</option>
+                  <option :value="'speechiness'">Speechiness</option>
+                  <option :value="'acousticness'">Acousticness</option>
+                  <option :value="'instrumentalness'">Instrumentalness</option>
+                  <option :value="'liveness'">Liveness</option>
+                  <option :value="'valence'">Valence</option>
+                  <option :value="'tempo'">Tempo</option>
+                  <option :value="'duration_ms'">Duration</option>
+                  <option :value="'sections'">Sections</option>
+                </b-select>
+              </b-field>
+            </b-field>
+          </div>
+        </div>
+        <div class="columns mt-2">
+          <div class="column is-4 is-offset-4">
+            <b-button expanded type="is-primary" @click="buildPlaylist()"
+              >Build Playlist</b-button
+            >
+          </div>
+        </div>
+        <div v-if="playlistAvailable" class="columns mt-3">
+          <div class="column">
+            <b-table :data="playlist">
+              <b-table-column field="artist" label="Artist" v-slot="props">
+                {{ props.row.artist }}
+              </b-table-column>
+              <b-table-column field="track" label="Track" v-slot="props">
+                {{ props.row.track }}
+              </b-table-column>
+              <b-table-column field="uri" label="Play" v-slot="props">
+                <b-button
+                  icon-left="play"
+                  type="is-primary"
+                  @click="openTrack(props.row.uri)"
+                  >Play</b-button
+                >
+              </b-table-column>
+            </b-table>
+          </div>
+        </div>
+      </section>
     </template>
   </div>
 </template>
@@ -590,11 +711,22 @@ export default {
       currentTrackImageURL: "",
       predictionAvailable: false,
       hit: true,
+      criteria: {
+        songSimilarityWeight: 0.75,
+        hit: true,
+        hitOrNotWeight: 0.25,
+        mainFeature: "danceability",
+        mainFeatureHigher: true,
+        mainFeatureWeight: 0.25,
+      },
+      playlist: [],
+      playlistAvailable: false,
     };
   },
   methods: {
     chooseInsertMethod(method) {
       this.predictionAvailable = false;
+      this.playlistAvailable = false;
       this.currentFeatures = {
         acousticness: 0,
         chorus_hit: 0,
@@ -611,6 +743,15 @@ export default {
         tempo: 0,
         time_signature: 3,
         valence: 0,
+      };
+
+      this.criteria = {
+        songSimilarityWeight: 0.75,
+        hit: true,
+        hitOrNotWeight: 0.25,
+        mainFeature: "danceability",
+        mainFeatureHigher: true,
+        mainFeatureWeight: 0.25,
       };
 
       if (method == "spotify") {
@@ -679,6 +820,25 @@ export default {
             this.isLoading = false;
           });
       }
+    },
+    buildPlaylist() {
+      this.isLoading = true;
+
+      axios
+        .post(`${apiBaseURL}/playlist/build`, {
+          criteria: this.criteria,
+          features: this.currentFeatures,
+        })
+        .then((response) => {
+          this.playlist = response.data.playlist;
+
+          this.playlistAvailable = true;
+          this.isLoading = false;
+        });
+    },
+    openTrack(uri) {
+      const parts = uri.split(":");
+      window.open("https://open.spotify.com/track/" + parts[2], "_blank");
     },
   },
 };

@@ -51,7 +51,7 @@
       <section v-else>
         <div class="columns">
           <div class="column is-9">
-            <b-field label="Spotify Search">
+            <b-field label="Spotify Search (songs from 2020-2022)">
               <b-input v-model="query"></b-input>
             </b-field>
           </div>
@@ -256,6 +256,28 @@
             </div>
           </div>
         </div>
+        <div class="columns mt-4">
+          <div class="column has-text-centered is-size-4">
+            <p v-if="manualInsert">
+              Prediction: the selected set of features<strong>
+                <span v-if="hit" class="has-text-success"> makes a hit!</span
+                ><span v-else class="has-text-danger">
+                  doesn't make a hit.</span
+                ></strong
+              >
+            </p>
+            <p v-else>
+              Prediction:
+              <strong
+                >{{ currentTrackName }}
+                <span v-if="hit" class="has-text-success"> is/was a hit!</span
+                ><span v-else class="has-text-danger">
+                  isn't/wasn't a hit.</span
+                ></strong
+              >
+            </p>
+          </div>
+        </div>
       </section>
     </template>
   </div>
@@ -299,6 +321,7 @@ export default {
       currentArtists: [],
       currentTrackImageURL: "",
       predictionAvailable: false,
+      hit: true,
     };
   },
   methods: {
@@ -351,6 +374,7 @@ export default {
         )
         .then((response) => {
           this.currentFeatures = response.data.features;
+          this.hit = response.data.hit;
 
           this.predictionAvailable = true;
           this.isLoading = false;

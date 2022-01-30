@@ -1,12 +1,24 @@
-import json
 from flask import Blueprint, jsonify, request, abort
 from requests import post, Request, Session
 import base64
 import os
+import pickle
+import pandas as pd
+from itertools import combinations
 
 spotify = Blueprint('spotify', __name__)
 
 auth_token = None
+
+script_dir = os.path.dirname(__file__)
+
+predict_model = pickle.load(
+    open(os.path.join(script_dir, "./models/finalized_model.sav"), "rb"))
+polynomial_features_model = pickle.load(
+    open(os.path.join(script_dir, "./models/poly_features.sav"), "rb"))
+
+SELECTED_COLS = ['danceability', 'loudness', 'instrumentalness', 'danceability_energy', 'danceability_instrumentalness', 'danceability_tempo', 'danceability_time_signature', 'energy_instrumentalness', 'key_instrumentalness', 'loudness_acousticness', 'loudness_instrumentalness',
+                 'mode_instrumentalness', 'speechiness_instrumentalness', 'instrumentalness_liveness', 'instrumentalness_valence', 'instrumentalness_tempo', 'instrumentalness_duration_ms', 'instrumentalness_time_signature', 'instrumentalness_chorus_hit', 'instrumentalness_sections']
 
 
 def auth_spotify():
@@ -54,6 +66,7 @@ def make_spotify_request(req):
 def search():
 
     query = request.args.get("q")
+    query += " year:2020-2022"
 
     response = make_spotify_request(Request('GET', 'https://api.spotify.com/v1/search',
                                             params={"type": "track", "q": query}))
@@ -111,4 +124,23 @@ def hit_prediction(track_id):
     else:
         features["chorus_hit"] = responseAnalysisJSON["sections"][2]["start"] if num_sections >= 3 else responseAnalysisJSON["sections"][num_sections - 1]["start"]
 
-    return jsonify({"features": features})
+    features_to_transform = {}
+
+    for key in features:
+        features_to_transform[key] = [features[key]]
+
+    df = pd.DataFrame.from_dict(features_to_transform)
+
+    combos = list(combinations(list(df.columns), 2))
+    colnames = list(df.columns) + ['_'.join(x) for x in combos]
+
+    global polynomial_features_model
+    df = polynomial_features_model.transform(df)
+    df = pd.DataFrame(df)
+    df.columns = colnames
+
+    global SELECTED_COLS
+
+    hit = True if predict_model.predict(df[SELECTED_COLS]) == 1 else False
+
+    return jsonify({"features": features, "hit": hit})
